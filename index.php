@@ -32,10 +32,16 @@
 
             <div class="col-lg-8 col-md-12">
                 <div id="ip-content" style="display: none;">
-                    <h4 class="mb-4">
-                        <i class="fas fa-server me-2"></i>
-                        IP Addresses - <span id="selected-branch-name"></span>
-                    </h4>
+                    <div class="actions-bar">
+                        <h5>
+                            <i class="fas fa-server me-2"></i>
+                            IP Addresses - <span id="selected-branch-name"></span>
+                        </h5>
+                        <button class="btn btn-success" id="add-ip-btn">
+                            <i class="fas fa-plus me-2"></i>
+                            Add New IP
+                        </button>
+                    </div>
 
                     <div class="loading-spinner" id="loading-spinner">
                         <div class="spinner-border text-primary" role="status">
@@ -54,6 +60,7 @@
                                         <th><i class="fas fa-tag me-1"></i>Device Type</th>
                                         <th><i class="fas fa-network-wired me-1"></i>Subnet</th>
                                         <th><i class="fas fa-info-circle me-1"></i>Description</th>
+                                        <th><i class="fas fa-cogs me-1"></i>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody id="ip-table-body">
@@ -75,6 +82,86 @@
                     <h5>Select a branch to view IP addresses</h5>
                     <p>Choose a branch from the left panel to display its IP configuration.</p>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- IP Modal -->
+    <div class="modal fade" id="ip-modal" tabindex="-1" aria-labelledby="modal-title" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modal-title">Add New IP Address</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="ip-form">
+                    <div class="modal-body">
+                        <input type="hidden" id="ip-id">
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="ip-address" class="form-label">
+                                    <i class="fas fa-globe me-1"></i>
+                                    IP Address *
+                                </label>
+                                <input type="text" class="form-control" id="ip-address" name="ip_address" 
+                                       placeholder="192.168.1.1" required>
+                                <div class="form-text">Enter a valid IPv4 address</div>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="device-name" class="form-label">
+                                    <i class="fas fa-desktop me-1"></i>
+                                    Device Name *
+                                </label>
+                                <input type="text" class="form-control" id="device-name" name="device_name" 
+                                       placeholder="Server-01" required>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="device-type" class="form-label">
+                                    <i class="fas fa-tag me-1"></i>
+                                    Device Type *
+                                </label>
+                                <select class="form-select" id="device-type" name="device_type_id" required>
+                                    <option value="">Select Device Type</option>
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="subnet" class="form-label">
+                                    <i class="fas fa-network-wired me-1"></i>
+                                    Subnet *
+                                </label>
+                                <select class="form-select" id="subnet" name="subnet_id" required>
+                                    <option value="">Select Subnet</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="description" class="form-label">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Description
+                            </label>
+                            <textarea class="form-control" id="description" name="description" rows="3"
+                                      placeholder="Optional description of the device or its purpose"></textarea>
+                        </div>
+                    </div>
+                    
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            <i class="fas fa-times me-1"></i>
+                            Cancel
+                        </button>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-save me-1"></i>
+                            Save IP Address
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
