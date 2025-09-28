@@ -100,6 +100,41 @@ class IPManagement {
         this.loadIPs();
     }
 
+// async loadIPs() {
+//     console.log('🔄 Loading IPs for branch:', this.currentBranch, 'page:', this.currentPage);
+//     this.showLoading(true);
+
+//     try {
+//         if (!this.currentBranch) {
+//             throw new Error('No branch selected');
+//         }
+
+//         const url = `api/ips.php?branch_id=${this.currentBranch}&page=${this.currentPage}`;
+//         console.log('📡 Fetching from:', url);
+        
+//         const response = await fetch(url);
+//         console.log('📊 Response status:', response.status);
+        
+//         if (!response.ok) {
+//             const errorText = await response.text();
+//             console.error('❌ Response error:', errorText);
+//             throw new Error(`HTTP ${response.status}: ${errorText}`);
+//         }
+
+//         const data = await response.json();
+//         console.log('✅ Received data:', data);
+
+//         this.renderIPTable(data.ips);
+//         this.renderPagination(data.pagination);
+
+//     } catch (error) {
+//         console.error('💥 Error details:', error);
+//         this.showToast(`Failed to load IP addresses: ${error.message}`, 'error');
+//     } finally {
+//         this.showLoading(false);
+//     }
+// }
+
     async loadIPs() {
         this.showLoading(true);
 
