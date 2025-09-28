@@ -6,7 +6,444 @@
     <title>IP Management System</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="assets/css/styles.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-blue: #1e3a8a;
+            --secondary-blue: #3b82f6;
+            --success-green: #10b981;
+            --warning-orange: #f59e0b;
+            --danger-red: #ef4444;
+            --dark-bg: #0f172a;
+            --card-bg: #1e293b;
+            --border-color: #334155;
+            --text-muted: #94a3b8;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--dark-bg) 0%, #1e293b 100%);
+            color: #e2e8f0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background: var(--primary-blue) !important;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .navbar-brand {
+            color: white !important;
+            font-weight: bold;
+            font-size: 1.5rem;
+        }
+
+        .main-container {
+            padding: 2rem 0;
+        }
+
+        .branch-card {
+            background: var(--card-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 15px;
+            transition: all 0.3s ease;
+            margin-bottom: 1rem;
+            cursor: pointer;
+        }
+
+        .branch-card:hover {
+            border-color: var(--secondary-blue);
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .branch-card.active {
+            border-color: var(--secondary-blue);
+            background: linear-gradient(135deg, var(--card-bg) 0%, #2563eb 100%);
+        }
+
+        .btn-branch {
+            background: transparent;
+            border: none;
+            color: #e2e8f0;
+            padding: 1.5rem;
+            width: 100%;
+            text-align: left;
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+
+        .btn-branch:hover,
+        .btn-branch:focus {
+            color: white;
+            background: transparent;
+            border: none;
+            outline: none;
+            box-shadow: none;
+        }
+
+        .ip-table-container {
+            background: var(--card-bg);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-top: 2rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .table-dark {
+            background: transparent;
+        }
+
+        .table-dark th {
+            background: var(--primary-blue);
+            border-color: var(--border-color);
+            color: white;
+            font-weight: 600;
+        }
+
+        .table-dark td {
+            border-color: var(--border-color);
+            color: #e2e8f0;
+            vertical-align: middle;
+        }
+
+        .table-dark tbody tr:hover {
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        /* Network grouping styles */
+        .network-header-row {
+            background: rgba(30, 58, 138, 0.3) !important;
+        }
+
+        .network-header {
+            padding: 0.75rem 1rem;
+            border-bottom: 2px solid var(--primary-blue);
+        }
+
+        .network-toggle {
+            color: #e2e8f0 !important;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .network-toggle:hover {
+            color: white !important;
+        }
+
+        .network-arrow {
+            transition: transform 0.3s ease;
+            margin-right: 0.5rem;
+        }
+
+        .network-ips-container {
+            background: rgba(15, 23, 42, 0.5);
+        }
+
+        .network-ips-content {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .nested-table {
+            margin-left: 2rem;
+            border-left: 3px solid var(--secondary-blue);
+        }
+
+        .nested-table td {
+            padding-left: 1.5rem;
+            border-color: rgba(51, 65, 85, 0.5);
+        }
+
+        .ip-row:hover {
+            background: rgba(59, 130, 246, 0.15) !important;
+        }
+
+        .pagination {
+            justify-content: center;
+            margin-top: 1.5rem;
+        }
+
+        .page-link {
+            background: var(--card-bg);
+            border-color: var(--border-color);
+            color: #e2e8f0;
+        }
+
+        .page-link:hover {
+            background: var(--secondary-blue);
+            border-color: var(--secondary-blue);
+            color: white;
+        }
+
+        .page-item.active .page-link {
+            background: var(--secondary-blue);
+            border-color: var(--secondary-blue);
+        }
+
+        .badge {
+            font-size: 0.8rem;
+            padding: 0.4rem 0.8rem;
+        }
+
+        .loading-spinner {
+            display: none;
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-muted);
+        }
+
+        .branch-icon {
+            margin-right: 10px;
+            color: var(--secondary-blue);
+        }
+
+        .ip-count {
+            float: right;
+            background: var(--secondary-blue);
+            color: white;
+            padding: 0.2rem 0.5rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+        }
+
+        /* CRUD Button Styles */
+        .action-buttons {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: flex-end;
+        }
+
+        .btn-sm {
+            padding: 0.375rem 0.75rem;
+            font-size: 0.875rem;
+            border-radius: 0.375rem;
+        }
+
+        .btn-success {
+            background-color: var(--success-green);
+            border-color: var(--success-green);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background-color: #059669;
+            border-color: #059669;
+        }
+
+        .btn-warning {
+            background-color: var(--warning-orange);
+            border-color: var(--warning-orange);
+            color: white;
+        }
+
+        .btn-warning:hover {
+            background-color: #d97706;
+            border-color: #d97706;
+        }
+
+        .btn-danger {
+            background-color: var(--danger-red);
+            border-color: var(--danger-red);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background-color: #dc2626;
+            border-color: #dc2626;
+        }
+
+        /* Modal Styles */
+        .modal-content {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            color: #e2e8f0;
+        }
+
+        .modal-header {
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .modal-footer {
+            border-top: 1px solid var(--border-color);
+        }
+
+        .form-control {
+            background: #374151;
+            border: 1px solid var(--border-color);
+            color: #e2e8f0;
+        }
+
+        .form-control:focus {
+            background: #374151;
+            border-color: var(--secondary-blue);
+            color: #e2e8f0;
+            box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.25);
+        }
+
+        .form-select {
+            background: #374151;
+            border: 1px solid var(--border-color);
+            color: #e2e8f0;
+        }
+
+        .form-select:focus {
+            background: #374151;
+            border-color: var(--secondary-blue);
+            color: #e2e8f0;
+            box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.25);
+        }
+
+        .form-label {
+            color: #e2e8f0;
+            font-weight: 500;
+        }
+
+        .btn-close {
+            filter: invert(1);
+        }
+
+        /* Toast Styles */
+        .toast-container {
+            z-index: 9999;
+        }
+
+        .toast {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            color: #e2e8f0;
+        }
+
+        .toast.success {
+            border-left: 4px solid var(--success-green);
+        }
+
+        .toast.error {
+            border-left: 4px solid var(--danger-red);
+        }
+
+        .toast-body {
+            padding: 1rem;
+        }
+
+        /* Enhanced actions bar */
+        .actions-bar {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .actions-bar h5 {
+            margin: 0;
+            color: #e2e8f0;
+        }
+
+        .search-controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .search-input-group {
+            position: relative;
+        }
+
+        .search-input-group .form-control {
+            padding-right: 2.5rem;
+        }
+
+        .clear-search {
+            position: absolute;
+            right: 0.5rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+        }
+
+        .clear-search:hover {
+            color: #e2e8f0;
+        }
+
+        .results-info {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-top: 1rem;
+        }
+
+        /* Controls bar */
+        .controls-bar {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .main-container {
+                padding: 1rem 0;
+            }
+
+            .ip-table-container {
+                padding: 1rem;
+                overflow-x: auto;
+            }
+
+            .table-responsive {
+                font-size: 0.9rem;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+                gap: 0.25rem;
+            }
+
+            .actions-bar,
+            .controls-bar {
+                flex-direction: column;
+                gap: 1rem;
+                text-align: center;
+            }
+
+            .search-controls {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .table th:last-child,
+            .table td:last-child {
+                min-width: 120px;
+            }
+
+            .nested-table {
+                margin-left: 0.5rem;
+            }
+
+            .nested-table td {
+                padding-left: 0.75rem;
+            }
+        }
+    </style>
 </head>
 <body>
     <nav class="navbar navbar-expand-lg">
@@ -43,6 +480,29 @@
                         </button>
                     </div>
 
+                    <div class="controls-bar">
+                        <div class="search-controls">
+                            <div class="search-input-group">
+                                <input type="text" class="form-control" id="search-input" 
+                                       placeholder="Search IPs, devices, descriptions...">
+                                <button type="button" class="clear-search" id="clear-search">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            
+                            <select class="form-select" id="network-filter" style="width: auto;">
+                                <option value="">All Networks</option>
+                            </select>
+                            
+                            <select class="form-select" id="records-per-page" style="width: auto;">
+                                <option value="10">10 per page</option>
+                                <option value="25">25 per page</option>
+                                <option value="50">50 per page</option>
+                                <option value="100">100 per page</option>
+                            </select>
+                        </div>
+                    </div>
+
                     <div class="loading-spinner" id="loading-spinner">
                         <div class="spinner-border text-primary" role="status">
                             <span class="visually-hidden">Loading...</span>
@@ -51,6 +511,8 @@
                     </div>
 
                     <div class="ip-table-container">
+                        <div class="results-info" id="results-info"></div>
+                        
                         <div class="table-responsive">
                             <table class="table table-dark table-striped">
                                 <thead>

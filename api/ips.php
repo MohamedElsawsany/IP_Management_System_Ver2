@@ -43,7 +43,10 @@ try {
 function handleGet($pdo) {
     $branch_id = $_GET['branch_id'] ?? null;
     $page = (int)($_GET['page'] ?? 1);
-    $records_per_page = 10;
+    $records_per_page = (int)($_GET['per_page'] ?? 10);
+    $search = $_GET['search'] ?? '';
+    $network = $_GET['network'] ?? '';
+    
     $offset = ($page - 1) * $records_per_page;
 
     if (!$branch_id) {
@@ -62,30 +65,63 @@ function handleGet($pdo) {
     $branch_id = (int)$branch_id;
 
     try {
+        // Build WHERE conditions
+        $whereConditions = ['i.branch_id = ?'];
+        $params = [$branch_id];
+
+        // Add search condition
+        if (!empty($search)) {
+            $whereConditions[] = '(i.ip_address LIKE ? OR i.device_name LIKE ? OR i.description LIKE ? OR dt.name LIKE ?)';
+            $searchTerm = '%' . $search . '%';
+            $params = array_merge($params, [$searchTerm, $searchTerm, $searchTerm, $searchTerm]);
+        }
+
+        // Add network filter condition
+        if (!empty($network)) {
+            $whereConditions[] = 'i.ip_address LIKE ?';
+            // Convert network like 192.168.1.0 to search pattern 192.168.1.%
+            $networkPattern = substr($network, 0, strrpos($network, '.')) . '.%';
+            $params[] = $networkPattern;
+        }
+
+        $whereClause = 'WHERE ' . implode(' AND ', $whereConditions);
+
         // Get total count
-        $count_stmt = $pdo->prepare("SELECT COUNT(*) FROM ips WHERE branch_id = ?");
-        $count_stmt->execute([$branch_id]);
+        $count_sql = "SELECT COUNT(*) 
+                     FROM ips i
+                     JOIN device_types dt ON i.device_type_id = dt.id
+                     JOIN subnets s ON i.subnet_id = s.id
+                     $whereClause";
+        
+        $count_stmt = $pdo->prepare($count_sql);
+        $count_stmt->execute($params);
         $total_records = (int)$count_stmt->fetchColumn();
         $total_pages = ceil($total_records / $records_per_page);
 
-        // Get IPs with pagination - using proper integer binding for LIMIT/OFFSET
-        $stmt = $pdo->prepare("
-            SELECT i.id, i.ip_address, i.device_name, i.description,
-                   dt.name as device_type, dt.id as device_type_id,
-                   s.subnet_mask, s.id as subnet_id
-            FROM ips i
-            JOIN device_types dt ON i.device_type_id = dt.id
-            JOIN subnets s ON i.subnet_id = s.id
-            WHERE i.branch_id = ?
-            ORDER BY INET_ATON(i.ip_address)
-            LIMIT $records_per_page OFFSET $offset
-        ");
+        // Get IPs with pagination
+        $sql = "SELECT i.id, i.ip_address, i.device_name, i.description,
+                       dt.name as device_type, dt.id as device_type_id,
+                       s.subnet_mask, s.id as subnet_id
+                FROM ips i
+                JOIN device_types dt ON i.device_type_id = dt.id
+                JOIN subnets s ON i.subnet_id = s.id
+                $whereClause
+                ORDER BY INET_ATON(i.ip_address)
+                LIMIT $records_per_page OFFSET $offset";
         
-        $stmt->execute([$branch_id]);
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
         $ips = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Get available networks for this branch (only if no network filter is applied)
+        $networks = [];
+        if (empty($network)) {
+            $networks = getAvailableNetworks($pdo, $branch_id, $search);
+        }
 
         echo json_encode([
             'ips' => $ips,
+            'networks' => $networks,
             'pagination' => [
                 'current_page' => $page,
                 'total_pages' => $total_pages,
@@ -98,6 +134,44 @@ function handleGet($pdo) {
         error_log("Database error in handleGet: " . $e->getMessage());
         http_response_code(500);
         echo json_encode(['error' => 'Database error: ' . $e->getMessage()]);
+    }
+}
+
+function getAvailableNetworks($pdo, $branch_id, $search = '') {
+    try {
+        // Build WHERE conditions for networks query
+        $whereConditions = ['branch_id = ?'];
+        $params = [$branch_id];
+
+        if (!empty($search)) {
+            $whereConditions[] = '(ip_address LIKE ? OR device_name LIKE ? OR description LIKE ?)';
+            $searchTerm = '%' . $search . '%';
+            $params = array_merge($params, [$searchTerm, $searchTerm, $searchTerm]);
+        }
+
+        $whereClause = 'WHERE ' . implode(' AND ', $whereConditions);
+
+        $sql = "SELECT DISTINCT 
+                    CONCAT(
+                        SUBSTRING_INDEX(ip_address, '.', 3), 
+                        '.0'
+                    ) as network
+                FROM ips 
+                $whereClause
+                ORDER BY INET_ATON(CONCAT(SUBSTRING_INDEX(ip_address, '.', 3), '.0'))";
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        
+        $networks = [];
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $networks[] = $row['network'];
+        }
+        
+        return $networks;
+    } catch (PDOException $e) {
+        error_log("Error getting networks: " . $e->getMessage());
+        return [];
     }
 }
 
