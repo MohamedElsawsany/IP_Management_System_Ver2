@@ -15,32 +15,37 @@ class IPManagement {
     this.setupEventListeners();
   }
 
-  initTheme() {
-    // Get saved theme from memory or default to dark
-    const savedTheme = this.getTheme() || 'dark';
-    this.setTheme(savedTheme);
-  }
+initTheme() {
+  // Get saved theme or default
+  const savedTheme = this.getTheme();
+  this.setTheme(savedTheme);
+}
 
-  getTheme() {
-    // Store in memory during session
-    if (!window.currentTheme) {
-      // Check system preference if no theme is set
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      window.currentTheme = prefersDark ? 'dark' : 'light';
-    }
-    return window.currentTheme;
+getTheme() {
+  // Try to get from localStorage first
+  const savedTheme = localStorage.getItem('ipms-theme');
+  if (savedTheme) {
+    return savedTheme;
   }
+  
+  // If no saved theme, check system preference
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  return prefersDark ? 'dark' : 'light';
+}
 
-  setTheme(theme) {
-    window.currentTheme = theme;
-    document.documentElement.setAttribute('data-theme', theme);
-    
-    // Update icon
-    const icon = document.querySelector('.theme-toggle i');
-    if (icon) {
-      icon.className = theme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
-    }
+setTheme(theme) {
+  // Save to localStorage
+  localStorage.setItem('ipms-theme', theme);
+  
+  // Apply theme
+  document.documentElement.setAttribute('data-theme', theme);
+  
+  // Update icon
+  const icon = document.querySelector('.theme-toggle i');
+  if (icon) {
+    icon.className = theme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
   }
+}
 
   toggleTheme() {
     const currentTheme = this.getTheme();
