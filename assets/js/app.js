@@ -1,11 +1,9 @@
 class IPManagement {
   constructor() {
     this.currentBranch = null;
-    this.currentPage = 1;
-    this.recordsPerPage = 10;
     this.deviceTypes = [];
     this.subnets = [];
-    this.searchQuery = "";
+    this.dataTable = null;
     this.init();
   }
 
@@ -27,30 +25,6 @@ class IPManagement {
       e.preventDefault();
       this.handleFormSubmit();
     });
-
-    // Search functionality
-    document.getElementById("search-input").addEventListener("input", (e) => {
-      this.searchQuery = e.target.value.trim();
-      this.currentPage = 1;
-      this.loadIPs();
-    });
-
-    // Clear search
-    document.getElementById("clear-search").addEventListener("click", () => {
-      document.getElementById("search-input").value = "";
-      this.searchQuery = "";
-      this.currentPage = 1;
-      this.loadIPs();
-    });
-
-    // Records per page
-    document
-      .getElementById("records-per-page")
-      .addEventListener("change", (e) => {
-        this.recordsPerPage = parseInt(e.target.value);
-        this.currentPage = 1;
-        this.loadIPs();
-      });
   }
 
   async loadBranches() {
@@ -120,212 +94,81 @@ class IPManagement {
     cardElement.classList.add("active");
 
     this.currentBranch = branchId;
-    this.currentPage = 1;
-    this.searchQuery = "";
-
-    // Reset search
-    document.getElementById("search-input").value = "";
 
     document.getElementById("selected-branch-name").textContent = branchName;
     document.getElementById("ip-content").style.display = "block";
     document.getElementById("no-branch-selected").style.display = "none";
 
-    this.loadIPs();
+    this.initializeDataTable();
   }
 
-  async loadIPs() {
-    this.showLoading(true);
-
-    try {
-      const data = await this.fetchIPs(
-        this.currentBranch,
-        this.currentPage,
-        this.searchQuery
-      );
-      this.renderIPTable(data.ips);
-      this.renderPagination(data.pagination);
-      this.updateResultsInfo(data.pagination);
-    } catch (error) {
-      console.error("Error loading IPs:", error);
-      this.showToast("Failed to load IP addresses", "error");
-    } finally {
-      this.showLoading(false);
-    }
-  }
-
-  async fetchIPs(branchId, page, search = "") {
-    let url = `api/ips.php?branch_id=${branchId}&page=${page}&per_page=${this.recordsPerPage}`;
-
-    if (search) {
-      url += `&search=${encodeURIComponent(search)}`;
+  initializeDataTable() {
+    // Destroy existing DataTable if it exists
+    if (this.dataTable) {
+      this.dataTable.destroy();
     }
 
-    const response = await fetch(url);
-    if (!response.ok) throw new Error("Failed to fetch IPs");
-    return await response.json();
-  }
-
-  updateResultsInfo(pagination) {
-    const info = document.getElementById("results-info");
-    const start =
-      (pagination.current_page - 1) * pagination.records_per_page + 1;
-    const end = Math.min(
-      pagination.current_page * pagination.records_per_page,
-      pagination.total_records
-    );
-
-    if (pagination.total_records > 0) {
-      info.textContent = `Showing ${start}-${end} of ${pagination.total_records} results`;
-    } else {
-      info.textContent = "";
-    }
-  }
-
-  renderIPTable(ips) {
-    const tbody = document.getElementById("ip-table-body");
-    tbody.innerHTML = "";
-
-    if (ips.length === 0) {
-      tbody.innerHTML = `
-        <tr>
-          <td colspan="6" class="text-center py-4">
-            <i class="fas fa-inbox fa-2x mb-2 d-block"></i>
-            ${
-              this.searchQuery
-                ? "No IP addresses match your search criteria"
-                : "No IP addresses found for this branch"
-            }
-          </td>
-        </tr>
-      `;
-      return;
-    }
-
-    ips.forEach((ip) => {
-      const row = document.createElement("tr");
-      row.innerHTML = `
-        <td><strong>${ip.ip_address}</strong></td>
-        <td>${ip.device_name}</td>
-        <td><span class="badge bg-primary">${ip.device_type}</span></td>
-        <td>${ip.subnet_mask}</td>
-        <td>${
-          ip.description || '<em class="text-muted">No description</em>'
-        }</td>
-        <td>
-          <div class="action-buttons">
-            <button class="btn btn-warning btn-sm" onclick="ipManager.showEditModal(${JSON.stringify(
-              ip
-            ).replace(/"/g, "&quot;")})">
-              <i class="fas fa-edit"></i>
-            </button>
-            <button class="btn btn-danger btn-sm" onclick="ipManager.deleteIP(${
-              ip.id
-            })">
-              <i class="fas fa-trash"></i>
-            </button>
-          </div>
-        </td>
-      `;
-      tbody.appendChild(row);
-    });
-  }
-
-  renderPagination(pagination) {
-    const container = document.getElementById("pagination-container");
-    container.innerHTML = "";
-
-    if (pagination.total_pages <= 1) return;
-
-    // First button
-    const firstLi = document.createElement("li");
-    firstLi.className = `page-item ${
-      pagination.current_page === 1 ? "disabled" : ""
-    }`;
-    firstLi.innerHTML = `
-      <a class="page-link" href="#" data-page="1">
-        <i class="fas fa-angle-double-left"></i> First
-      </a>
-    `;
-    container.appendChild(firstLi);
-
-    // Previous button
-    const prevLi = document.createElement("li");
-    prevLi.className = `page-item ${
-      pagination.current_page === 1 ? "disabled" : ""
-    }`;
-    prevLi.innerHTML = `
-      <a class="page-link" href="#" data-page="${
-        pagination.current_page - 1
-      }">
-        <i class="fas fa-chevron-left"></i> Previous
-      </a>
-    `;
-    container.appendChild(prevLi);
-
-    // Page numbers (show max 5 pages around current)
-    const startPage = Math.max(1, pagination.current_page - 2);
-    const endPage = Math.min(
-      pagination.total_pages,
-      pagination.current_page + 2
-    );
-
-    if (startPage > 1) {
-      const li = document.createElement("li");
-      li.className = "page-item disabled";
-      li.innerHTML = '<span class="page-link">...</span>';
-      container.appendChild(li);
-    }
-
-    for (let i = startPage; i <= endPage; i++) {
-      const li = document.createElement("li");
-      li.className = `page-item ${
-        i === pagination.current_page ? "active" : ""
-      }`;
-      li.innerHTML = `<a class="page-link" href="#" data-page="${i}">${i}</a>`;
-      container.appendChild(li);
-    }
-
-    if (endPage < pagination.total_pages) {
-      const li = document.createElement("li");
-      li.className = "page-item disabled";
-      li.innerHTML = '<span class="page-link">...</span>';
-      container.appendChild(li);
-    }
-
-    // Next button
-    const nextLi = document.createElement("li");
-    nextLi.className = `page-item ${
-      pagination.current_page === pagination.total_pages ? "disabled" : ""
-    }`;
-    nextLi.innerHTML = `
-      <a class="page-link" href="#" data-page="${
-        pagination.current_page + 1
-      }">
-        Next <i class="fas fa-chevron-right"></i>
-      </a>
-    `;
-    container.appendChild(nextLi);
-
-    // Last button
-    const lastLi = document.createElement("li");
-    lastLi.className = `page-item ${
-      pagination.current_page === pagination.total_pages ? "disabled" : ""
-    }`;
-    lastLi.innerHTML = `
-      <a class="page-link" href="#" data-page="${pagination.total_pages}">
-        Last <i class="fas fa-angle-double-right"></i>
-      </a>
-    `;
-    container.appendChild(lastLi);
-
-    // Add click events
-    container.addEventListener("click", (e) => {
-      e.preventDefault();
-      const link = e.target.closest("a[data-page]");
-      if (link && !link.closest(".disabled")) {
-        this.currentPage = parseInt(link.dataset.page);
-        this.loadIPs();
-      }
+    // Initialize DataTable with AJAX
+    this.dataTable = $('#ip-table').DataTable({
+      processing: true,
+      serverSide: true,
+      ajax: {
+        url: 'api/ips_datatable.php',
+        type: 'POST',
+        data: (d) => {
+          d.branch_id = this.currentBranch;
+          return d;
+        },
+        error: (xhr, error, thrown) => {
+          console.error('DataTables error:', error, thrown);
+          this.showToast('Failed to load IP addresses', 'error');
+        }
+      },
+      columns: [
+        { 
+          data: 'ip_address',
+          render: (data) => `<strong>${data}</strong>`
+        },
+        { data: 'device_name' },
+        { 
+          data: 'device_type',
+          render: (data) => `<span class="badge bg-primary">${data}</span>`
+        },
+        { data: 'subnet_mask' },
+        { 
+          data: 'description',
+          render: (data) => data || '<em class="text-muted">No description</em>'
+        },
+        {
+          data: null,
+          orderable: false,
+          searchable: false,
+          render: (data, type, row) => {
+            const ipJson = JSON.stringify(row).replace(/"/g, '&quot;');
+            return `
+              <div class="action-buttons">
+                <button class="btn btn-warning btn-sm" onclick="ipManager.showEditModal(${ipJson})">
+                  <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn btn-danger btn-sm" onclick="ipManager.deleteIP(${row.id})">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </div>
+            `;
+          }
+        }
+      ],
+      order: [[0, 'asc']], // Sort by IP address by default
+      pageLength: 10,
+      lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
+      language: {
+        emptyTable: "No IP addresses found for this branch",
+        zeroRecords: "No matching IP addresses found",
+        processing: '<div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div>'
+      },
+      dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rt<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
+      responsive: true,
+      autoWidth: false
     });
   }
 
@@ -435,7 +278,13 @@ class IPManagement {
           document.getElementById("ip-modal")
         );
         modal.hide();
-        this.loadIPs();
+        
+        // Reload DataTable
+        if (this.dataTable) {
+          this.dataTable.ajax.reload();
+        }
+        
+        // Refresh branch IP counts
         this.loadBranches();
       } else {
         this.showToast(result.error || "Operation failed", "error");
@@ -460,7 +309,13 @@ class IPManagement {
 
       if (response.ok) {
         this.showToast(result.message, "success");
-        this.loadIPs();
+        
+        // Reload DataTable
+        if (this.dataTable) {
+          this.dataTable.ajax.reload();
+        }
+        
+        // Refresh branch IP counts
         this.loadBranches();
       } else {
         this.showToast(result.error || "Delete failed", "error");
@@ -471,19 +326,11 @@ class IPManagement {
     }
   }
 
-  showLoading(show) {
-    document.getElementById("loading-spinner").style.display = show
-      ? "block"
-      : "none";
-  }
-
   showToast(message, type = "success") {
     const toastHtml = `
       <div class="toast ${type}" role="alert" aria-live="assertive" aria-atomic="true">
         <div class="toast-body">
-          <i class="fas ${
-            type === "success" ? "fa-check-circle" : "fa-exclamation-circle"
-          } me-2"></i>
+          <i class="fas ${type === "success" ? "fa-check-circle" : "fa-exclamation-circle"} me-2"></i>
           ${message}
         </div>
       </div>
