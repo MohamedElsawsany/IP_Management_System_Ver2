@@ -6,8 +6,6 @@ class IPManagement {
     this.deviceTypes = [];
     this.subnets = [];
     this.searchQuery = "";
-    this.currentNetwork = null; // For network filtering
-    this.networks = []; // Available networks
     this.init();
   }
 
@@ -33,7 +31,7 @@ class IPManagement {
     // Search functionality
     document.getElementById("search-input").addEventListener("input", (e) => {
       this.searchQuery = e.target.value.trim();
-      this.currentPage = 1; // Reset to first page
+      this.currentPage = 1;
       this.loadIPs();
     });
 
@@ -44,15 +42,6 @@ class IPManagement {
       this.currentPage = 1;
       this.loadIPs();
     });
-
-    // Network filter
-    document
-      .getElementById("network-filter")
-      .addEventListener("change", (e) => {
-        this.currentNetwork = e.target.value || null;
-        this.currentPage = 1;
-        this.loadIPs();
-      });
 
     // Records per page
     document
@@ -110,12 +99,12 @@ class IPManagement {
       const branchCard = document.createElement("div");
       branchCard.className = "branch-card";
       branchCard.innerHTML = `
-                        <button class="btn btn-branch" data-branch-id="${branch.id}" data-branch-name="${branch.name}">
-                            <i class="fas fa-building branch-icon"></i>
-                            ${branch.name}
-                            <span class="ip-count">${branch.ip_count} IPs</span>
-                        </button>
-                    `;
+        <button class="btn btn-branch" data-branch-id="${branch.id}" data-branch-name="${branch.name}">
+          <i class="fas fa-building branch-icon"></i>
+          ${branch.name}
+          <span class="ip-count">${branch.ip_count} IPs</span>
+        </button>
+      `;
 
       branchCard.addEventListener("click", () =>
         this.selectBranch(branch.id, branch.name, branchCard)
@@ -133,11 +122,9 @@ class IPManagement {
     this.currentBranch = branchId;
     this.currentPage = 1;
     this.searchQuery = "";
-    this.currentNetwork = null;
 
-    // Reset search and network filter
+    // Reset search
     document.getElementById("search-input").value = "";
-    document.getElementById("network-filter").value = "";
 
     document.getElementById("selected-branch-name").textContent = branchName;
     document.getElementById("ip-content").style.display = "block";
@@ -153,12 +140,10 @@ class IPManagement {
       const data = await this.fetchIPs(
         this.currentBranch,
         this.currentPage,
-        this.searchQuery,
-        this.currentNetwork
+        this.searchQuery
       );
       this.renderIPTable(data.ips);
       this.renderPagination(data.pagination);
-      this.updateNetworkFilter(data.networks || []);
       this.updateResultsInfo(data.pagination);
     } catch (error) {
       console.error("Error loading IPs:", error);
@@ -168,46 +153,16 @@ class IPManagement {
     }
   }
 
-  async fetchIPs(branchId, page, search = "", network = null) {
+  async fetchIPs(branchId, page, search = "") {
     let url = `api/ips.php?branch_id=${branchId}&page=${page}&per_page=${this.recordsPerPage}`;
 
     if (search) {
       url += `&search=${encodeURIComponent(search)}`;
     }
 
-    if (network) {
-      url += `&network=${encodeURIComponent(network)}`;
-    }
-
     const response = await fetch(url);
     if (!response.ok) throw new Error("Failed to fetch IPs");
     return await response.json();
-  }
-
-  // Extract network from IP address (assuming /24 networks)
-  getNetworkFromIP(ip) {
-    const parts = ip.split(".");
-    if (parts.length === 4) {
-      return `${parts[0]}.${parts[1]}.${parts[2]}.0`;
-    }
-    return null;
-  }
-
-  updateNetworkFilter(networks) {
-    const select = document.getElementById("network-filter");
-    const currentValue = select.value;
-
-    select.innerHTML = '<option value="">All Networks</option>';
-
-    networks.forEach((network) => {
-      const option = document.createElement("option");
-      option.value = network;
-      option.textContent = `${network}/24`;
-      if (currentValue === network) {
-        option.selected = true;
-      }
-      select.appendChild(option);
-    });
   }
 
   updateResultsInfo(pagination) {
@@ -219,7 +174,11 @@ class IPManagement {
       pagination.total_records
     );
 
-    info.textContent = `Showing ${start}-${end} of ${pagination.total_records} results`;
+    if (pagination.total_records > 0) {
+      info.textContent = `Showing ${start}-${end} of ${pagination.total_records} results`;
+    } else {
+      info.textContent = "";
+    }
   }
 
   renderIPTable(ips) {
@@ -228,148 +187,47 @@ class IPManagement {
 
     if (ips.length === 0) {
       tbody.innerHTML = `
-                        <tr>
-                            <td colspan="6" class="text-center py-4">
-                                <i class="fas fa-inbox fa-2x mb-2 d-block"></i>
-                                ${
-                                  this.searchQuery || this.currentNetwork
-                                    ? "No IP addresses match your search criteria"
-                                    : "No IP addresses found for this branch"
-                                }
-                            </td>
-                        </tr>
-                    `;
+        <tr>
+          <td colspan="6" class="text-center py-4">
+            <i class="fas fa-inbox fa-2x mb-2 d-block"></i>
+            ${
+              this.searchQuery
+                ? "No IP addresses match your search criteria"
+                : "No IP addresses found for this branch"
+            }
+          </td>
+        </tr>
+      `;
       return;
     }
 
-    // Group IPs by network if not filtering by specific network
-    if (!this.currentNetwork) {
-      const groupedIPs = this.groupIPsByNetwork(ips);
-      this.renderGroupedIPTable(groupedIPs, tbody);
-    } else {
-      // Render flat table when filtering by network
-      this.renderFlatIPTable(ips, tbody);
-    }
-  }
-
-  groupIPsByNetwork(ips) {
-    const grouped = {};
-
     ips.forEach((ip) => {
-      const network = this.getNetworkFromIP(ip.ip_address);
-      if (!grouped[network]) {
-        grouped[network] = [];
-      }
-      grouped[network].push(ip);
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td><strong>${ip.ip_address}</strong></td>
+        <td>${ip.device_name}</td>
+        <td><span class="badge bg-primary">${ip.device_type}</span></td>
+        <td>${ip.subnet_mask}</td>
+        <td>${
+          ip.description || '<em class="text-muted">No description</em>'
+        }</td>
+        <td>
+          <div class="action-buttons">
+            <button class="btn btn-warning btn-sm" onclick="ipManager.showEditModal(${JSON.stringify(
+              ip
+            ).replace(/"/g, "&quot;")})">
+              <i class="fas fa-edit"></i>
+            </button>
+            <button class="btn btn-danger btn-sm" onclick="ipManager.deleteIP(${
+              ip.id
+            })">
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
+        </td>
+      `;
+      tbody.appendChild(row);
     });
-
-    return grouped;
-  }
-
-  renderGroupedIPTable(groupedIPs, tbody) {
-    Object.keys(groupedIPs)
-      .sort()
-      .forEach((network) => {
-        // Network header row
-        const networkRow = document.createElement("tr");
-        networkRow.className = "network-header-row";
-        networkRow.innerHTML = `
-                        <td colspan="6" class="network-header">
-                            <button class="btn btn-link text-start p-0 w-100 network-toggle" data-network="${network}">
-                                <i class="fas fa-chevron-down network-arrow"></i>
-                                <i class="fas fa-network-wired me-2"></i>
-                                <strong>Network: ${network}/24</strong>
-                                <span class="badge bg-info ms-2">${groupedIPs[network].length} IPs</span>
-                            </button>
-                        </td>
-                    `;
-        tbody.appendChild(networkRow);
-
-        // Network IPs container
-        const networkIPs = document.createElement("tr");
-        networkIPs.className = "network-ips-container";
-        networkIPs.innerHTML = `
-                        <td colspan="6" class="p-0">
-                            <div class="network-ips-content" data-network="${network}">
-                                <table class="table table-dark mb-0 nested-table">
-                                    <tbody class="network-ips" data-network="${network}">
-                                    </tbody>
-                                </table>
-                            </div>
-                        </td>
-                    `;
-        tbody.appendChild(networkIPs);
-
-        // Add IPs for this network
-        const networkTbody = networkIPs.querySelector(".network-ips");
-        groupedIPs[network].forEach((ip) => {
-          this.addIPRow(networkTbody, ip);
-        });
-
-        // Add click handler for network toggle
-        networkRow
-          .querySelector(".network-toggle")
-          .addEventListener("click", (e) => {
-            this.toggleNetwork(network);
-          });
-      });
-  }
-
-  renderFlatIPTable(ips, tbody) {
-    ips.forEach((ip) => {
-      this.addIPRow(tbody, ip);
-    });
-  }
-
-  addIPRow(tbody, ip) {
-    const row = document.createElement("tr");
-    row.className = "ip-row";
-    row.innerHTML = `
-                    <td><strong>${ip.ip_address}</strong></td>
-                    <td>${ip.device_name}</td>
-                    <td><span class="badge bg-primary">${
-                      ip.device_type
-                    }</span></td>
-                    <td>${ip.subnet_mask}</td>
-                    <td>${
-                      ip.description ||
-                      '<em class="text-muted">No description</em>'
-                    }</td>
-                    <td>
-                        <div class="action-buttons">
-                            <button class="btn btn-warning btn-sm" onclick="ipManager.showEditModal(${JSON.stringify(
-                              ip
-                            ).replace(/"/g, "&quot;")})">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="btn btn-danger btn-sm" onclick="ipManager.deleteIP(${
-                              ip.id
-                            })">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
-                    </td>
-                `;
-    tbody.appendChild(row);
-  }
-
-  toggleNetwork(network) {
-    const content = document.querySelector(
-      `[data-network="${network}"].network-ips-content`
-    );
-    const arrow = document.querySelector(
-      `[data-network="${network}"] .network-arrow`
-    );
-
-    if (content.style.display === "none") {
-      content.style.display = "block";
-      arrow.classList.remove("fa-chevron-right");
-      arrow.classList.add("fa-chevron-down");
-    } else {
-      content.style.display = "none";
-      arrow.classList.remove("fa-chevron-down");
-      arrow.classList.add("fa-chevron-right");
-    }
   }
 
   renderPagination(pagination) {
@@ -384,10 +242,10 @@ class IPManagement {
       pagination.current_page === 1 ? "disabled" : ""
     }`;
     firstLi.innerHTML = `
-                    <a class="page-link" href="#" data-page="1">
-                        <i class="fas fa-angle-double-left"></i> First
-                    </a>
-                `;
+      <a class="page-link" href="#" data-page="1">
+        <i class="fas fa-angle-double-left"></i> First
+      </a>
+    `;
     container.appendChild(firstLi);
 
     // Previous button
@@ -396,12 +254,12 @@ class IPManagement {
       pagination.current_page === 1 ? "disabled" : ""
     }`;
     prevLi.innerHTML = `
-                    <a class="page-link" href="#" data-page="${
-                      pagination.current_page - 1
-                    }">
-                        <i class="fas fa-chevron-left"></i> Previous
-                    </a>
-                `;
+      <a class="page-link" href="#" data-page="${
+        pagination.current_page - 1
+      }">
+        <i class="fas fa-chevron-left"></i> Previous
+      </a>
+    `;
     container.appendChild(prevLi);
 
     // Page numbers (show max 5 pages around current)
@@ -440,12 +298,12 @@ class IPManagement {
       pagination.current_page === pagination.total_pages ? "disabled" : ""
     }`;
     nextLi.innerHTML = `
-                    <a class="page-link" href="#" data-page="${
-                      pagination.current_page + 1
-                    }">
-                        Next <i class="fas fa-chevron-right"></i>
-                    </a>
-                `;
+      <a class="page-link" href="#" data-page="${
+        pagination.current_page + 1
+      }">
+        Next <i class="fas fa-chevron-right"></i>
+      </a>
+    `;
     container.appendChild(nextLi);
 
     // Last button
@@ -454,10 +312,10 @@ class IPManagement {
       pagination.current_page === pagination.total_pages ? "disabled" : ""
     }`;
     lastLi.innerHTML = `
-                    <a class="page-link" href="#" data-page="${pagination.total_pages}">
-                        Last <i class="fas fa-angle-double-right"></i>
-                    </a>
-                `;
+      <a class="page-link" href="#" data-page="${pagination.total_pages}">
+        Last <i class="fas fa-angle-double-right"></i>
+      </a>
+    `;
     container.appendChild(lastLi);
 
     // Add click events
@@ -578,7 +436,7 @@ class IPManagement {
         );
         modal.hide();
         this.loadIPs();
-        this.loadBranches(); // Refresh branch IP counts
+        this.loadBranches();
       } else {
         this.showToast(result.error || "Operation failed", "error");
       }
@@ -603,7 +461,7 @@ class IPManagement {
       if (response.ok) {
         this.showToast(result.message, "success");
         this.loadIPs();
-        this.loadBranches(); // Refresh branch IP counts
+        this.loadBranches();
       } else {
         this.showToast(result.error || "Delete failed", "error");
       }
@@ -620,21 +478,17 @@ class IPManagement {
   }
 
   showToast(message, type = "success") {
-    // Create toast element
     const toastHtml = `
-                    <div class="toast ${type}" role="alert" aria-live="assertive" aria-atomic="true">
-                        <div class="toast-body">
-                            <i class="fas ${
-                              type === "success"
-                                ? "fa-check-circle"
-                                : "fa-exclamation-circle"
-                            } me-2"></i>
-                            ${message}
-                        </div>
-                    </div>
-                `;
+      <div class="toast ${type}" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-body">
+          <i class="fas ${
+            type === "success" ? "fa-check-circle" : "fa-exclamation-circle"
+          } me-2"></i>
+          ${message}
+        </div>
+      </div>
+    `;
 
-    // Get or create toast container
     let container = document.querySelector(".toast-container");
     if (!container) {
       container = document.createElement("div");
@@ -642,13 +496,11 @@ class IPManagement {
       document.body.appendChild(container);
     }
 
-    // Add toast to container
     container.innerHTML = toastHtml;
     const toastElement = container.querySelector(".toast");
     const toast = new bootstrap.Toast(toastElement);
     toast.show();
 
-    // Remove toast after it's hidden
     toastElement.addEventListener("hidden.bs.toast", () => {
       toastElement.remove();
     });

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -445,6 +446,7 @@
         }
     </style>
 </head>
+
 <body>
     <nav class="navbar navbar-expand-lg">
         <div class="container">
@@ -483,17 +485,13 @@
                     <div class="controls-bar">
                         <div class="search-controls">
                             <div class="search-input-group">
-                                <input type="text" class="form-control" id="search-input" 
-                                       placeholder="Search IPs, devices, descriptions...">
+                                <input type="text" class="form-control" id="search-input"
+                                    placeholder="Search IPs, devices, descriptions...">
                                 <button type="button" class="clear-search" id="clear-search">
                                     <i class="fas fa-times"></i>
                                 </button>
                             </div>
-                            
-                            <select class="form-select" id="network-filter" style="width: auto;">
-                                <option value="">All Networks</option>
-                            </select>
-                            
+
                             <select class="form-select" id="records-per-page" style="width: auto;">
                                 <option value="10">10 per page</option>
                                 <option value="25">25 per page</option>
@@ -512,7 +510,7 @@
 
                     <div class="ip-table-container">
                         <div class="results-info" id="results-info"></div>
-                        
+
                         <div class="table-responsive">
                             <table class="table table-dark table-striped">
                                 <thead>
@@ -559,25 +557,25 @@
                 <form id="ip-form">
                     <div class="modal-body">
                         <input type="hidden" id="ip-id">
-                        
+
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="ip-address" class="form-label">
                                     <i class="fas fa-globe me-1"></i>
                                     IP Address *
                                 </label>
-                                <input type="text" class="form-control" id="ip-address" name="ip_address" 
-                                       placeholder="192.168.1.1" required>
+                                <input type="text" class="form-control" id="ip-address" name="ip_address"
+                                    placeholder="192.168.1.1" required>
                                 <div class="form-text">Enter a valid IPv4 address</div>
                             </div>
-                            
+
                             <div class="col-md-6 mb-3">
                                 <label for="device-name" class="form-label">
                                     <i class="fas fa-desktop me-1"></i>
                                     Device Name *
                                 </label>
-                                <input type="text" class="form-control" id="device-name" name="device_name" 
-                                       placeholder="Server-01" required>
+                                <input type="text" class="form-control" id="device-name" name="device_name"
+                                    placeholder="Server-01" required>
                             </div>
                         </div>
 
@@ -591,7 +589,7 @@
                                     <option value="">Select Device Type</option>
                                 </select>
                             </div>
-                            
+
                             <div class="col-md-6 mb-3">
                                 <label for="subnet" class="form-label">
                                     <i class="fas fa-network-wired me-1"></i>
@@ -609,10 +607,10 @@
                                 Description
                             </label>
                             <textarea class="form-control" id="description" name="description" rows="3"
-                                      placeholder="Optional description of the device or its purpose"></textarea>
+                                placeholder="Optional description of the device or its purpose"></textarea>
                         </div>
                     </div>
-                    
+
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                             <i class="fas fa-times me-1"></i>
@@ -631,4 +629,5 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
     <script src="assets/js/app.js"></script>
 </body>
+
 </html>
