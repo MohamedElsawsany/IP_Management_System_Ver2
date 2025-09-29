@@ -10,6 +10,11 @@
     <link href="assets/css/styles.css" rel="stylesheet">
 </head>
 <body>
+    <!-- Theme Toggle Button -->
+    <button class="theme-toggle" id="theme-toggle" title="Toggle theme">
+        <i class="fas fa-sun"></i>
+    </button>
+
     <nav class="navbar navbar-expand-lg">
         <div class="container">
             <a class="navbar-brand" href="#">

@@ -8,13 +8,55 @@ class IPManagement {
   }
 
   init() {
+    this.initTheme();
     this.loadBranches();
     this.loadDeviceTypes();
     this.loadSubnets();
     this.setupEventListeners();
   }
 
+  initTheme() {
+    // Get saved theme from memory or default to dark
+    const savedTheme = this.getTheme() || 'dark';
+    this.setTheme(savedTheme);
+  }
+
+  getTheme() {
+    // Store in memory during session
+    if (!window.currentTheme) {
+      // Check system preference if no theme is set
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      window.currentTheme = prefersDark ? 'dark' : 'light';
+    }
+    return window.currentTheme;
+  }
+
+  setTheme(theme) {
+    window.currentTheme = theme;
+    document.documentElement.setAttribute('data-theme', theme);
+    
+    // Update icon
+    const icon = document.querySelector('.theme-toggle i');
+    if (icon) {
+      icon.className = theme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+    }
+  }
+
+  toggleTheme() {
+    const currentTheme = this.getTheme();
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    this.setTheme(newTheme);
+  }
+
   setupEventListeners() {
+    // Theme toggle button
+    const themeToggle = document.getElementById('theme-toggle');
+    if (themeToggle) {
+      themeToggle.addEventListener('click', () => {
+        this.toggleTheme();
+      });
+    }
+
     // Add IP button
     document.getElementById("add-ip-btn").addEventListener("click", () => {
       this.showAddModal();
