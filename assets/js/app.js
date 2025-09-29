@@ -1,6 +1,9 @@
 class IPManagement {
   constructor() {
     this.currentBranch = null;
+    this.currentBranchName = null;
+    this.currentNetwork = null;
+    this.currentSubnetId = null;
     this.deviceTypes = [];
     this.subnets = [];
     this.dataTable = null;
@@ -15,37 +18,28 @@ class IPManagement {
     this.setupEventListeners();
   }
 
-initTheme() {
-  // Get saved theme or default
-  const savedTheme = this.getTheme();
-  this.setTheme(savedTheme);
-}
-
-getTheme() {
-  // Try to get from localStorage first
-  const savedTheme = localStorage.getItem('ipms-theme');
-  if (savedTheme) {
-    return savedTheme;
+  initTheme() {
+    const savedTheme = this.getTheme();
+    this.setTheme(savedTheme);
   }
-  
-  // If no saved theme, check system preference
-  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-  return prefersDark ? 'dark' : 'light';
-}
 
-setTheme(theme) {
-  // Save to localStorage
-  localStorage.setItem('ipms-theme', theme);
-  
-  // Apply theme
-  document.documentElement.setAttribute('data-theme', theme);
-  
-  // Update icon
-  const icon = document.querySelector('.theme-toggle i');
-  if (icon) {
-    icon.className = theme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+  getTheme() {
+    const savedTheme = localStorage.getItem('ipms-theme');
+    if (savedTheme) {
+      return savedTheme;
+    }
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    return prefersDark ? 'dark' : 'light';
   }
-}
+
+  setTheme(theme) {
+    localStorage.setItem('ipms-theme', theme);
+    document.documentElement.setAttribute('data-theme', theme);
+    const icon = document.querySelector('.theme-toggle i');
+    if (icon) {
+      icon.className = theme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+    }
+  }
 
   toggleTheme() {
     const currentTheme = this.getTheme();
@@ -54,7 +48,7 @@ setTheme(theme) {
   }
 
   setupEventListeners() {
-    // Theme toggle button
+    // Theme toggle
     const themeToggle = document.getElementById('theme-toggle');
     if (themeToggle) {
       themeToggle.addEventListener('click', () => {
@@ -62,13 +56,23 @@ setTheme(theme) {
       });
     }
 
+    // Branch selection
+    document.getElementById('branch-select').addEventListener('change', (e) => {
+      this.onBranchChange(e.target.value);
+    });
+
+    // Network selection
+    document.getElementById('network-select').addEventListener('change', (e) => {
+      this.onNetworkChange(e.target.value);
+    });
+
     // Add IP button
-    document.getElementById("add-ip-btn").addEventListener("click", () => {
+    document.getElementById('add-ip-btn').addEventListener('click', () => {
       this.showAddModal();
     });
 
-    // Modal form submission
-    document.getElementById("ip-form").addEventListener("submit", (e) => {
+    // Form submission
+    document.getElementById('ip-form').addEventListener('submit', (e) => {
       e.preventDefault();
       this.handleFormSubmit();
     });
@@ -76,86 +80,140 @@ setTheme(theme) {
 
   async loadBranches() {
     try {
-      const branches = await this.fetchBranches();
-      this.renderBranches(branches);
+      const response = await fetch('api/branches.php');
+      if (!response.ok) throw new Error('Failed to fetch branches');
+      const branches = await response.json();
+      this.renderBranchDropdown(branches);
     } catch (error) {
-      console.error("Error loading branches:", error);
-      this.showToast("Failed to load branches", "error");
+      console.error('Error loading branches:', error);
+      this.showToast('Failed to load branches', 'error');
     }
+  }
+
+  renderBranchDropdown(branches) {
+    const select = document.getElementById('branch-select');
+    select.innerHTML = '<option value="">Choose a branch...</option>';
+    
+    branches.forEach(branch => {
+      const option = document.createElement('option');
+      option.value = branch.id;
+      option.textContent = `${branch.name} (${branch.ip_count} IPs)`;
+      option.dataset.name = branch.name;
+      select.appendChild(option);
+    });
+  }
+
+  async onBranchChange(branchId) {
+    // Reset network selection
+    const networkSelect = document.getElementById('network-select');
+    networkSelect.innerHTML = '<option value="">Choose a network...</option>';
+    networkSelect.disabled = true;
+    
+    // Hide IP content
+    document.getElementById('ip-content').style.display = 'none';
+    document.getElementById('no-selection').style.display = 'block';
+    
+    if (!branchId) {
+      this.currentBranch = null;
+      this.currentBranchName = null;
+      return;
+    }
+    
+    this.currentBranch = parseInt(branchId);
+    const selectedOption = document.querySelector(`#branch-select option[value="${branchId}"]`);
+    this.currentBranchName = selectedOption ? selectedOption.dataset.name : '';
+    
+    // Load networks for selected branch
+    await this.loadNetworks(branchId);
+  }
+
+  async loadNetworks(branchId) {
+    try {
+      const response = await fetch(`api/networks.php?branch_id=${branchId}`);
+      if (!response.ok) throw new Error('Failed to fetch networks');
+      const networks = await response.json();
+      this.renderNetworkDropdown(networks);
+    } catch (error) {
+      console.error('Error loading networks:', error);
+      this.showToast('Failed to load networks', 'error');
+    }
+  }
+
+  renderNetworkDropdown(networks) {
+    const select = document.getElementById('network-select');
+    select.innerHTML = '<option value="">Choose a network...</option>';
+    
+    if (networks.length === 0) {
+      const option = document.createElement('option');
+      option.textContent = 'No networks available';
+      option.disabled = true;
+      select.appendChild(option);
+      return;
+    }
+    
+    networks.forEach(network => {
+      const option = document.createElement('option');
+      option.value = JSON.stringify({
+        network: network.network,
+        subnet_id: network.subnet_id
+      });
+      option.textContent = `${network.network}/${network.prefix} - ${network.subnet_mask} (${network.ip_count} IPs)`;
+      select.appendChild(option);
+    });
+    
+    select.disabled = false;
+  }
+
+  onNetworkChange(value) {
+    if (!value) {
+      this.currentNetwork = null;
+      this.currentSubnetId = null;
+      document.getElementById('ip-content').style.display = 'none';
+      document.getElementById('no-selection').style.display = 'block';
+      return;
+    }
+    
+    const data = JSON.parse(value);
+    this.currentNetwork = data.network;
+    this.currentSubnetId = data.subnet_id;
+    
+    // Update display
+    document.getElementById('selected-branch-name').textContent = this.currentBranchName;
+    document.getElementById('selected-network').textContent = this.currentNetwork;
+    document.getElementById('ip-content').style.display = 'block';
+    document.getElementById('no-selection').style.display = 'none';
+    
+    // Load IPs for selected network
+    this.initializeDataTable();
   }
 
   async loadDeviceTypes() {
     try {
-      const response = await fetch("api/device_types.php");
-      if (!response.ok) throw new Error("Failed to fetch device types");
+      const response = await fetch('api/device_types.php');
+      if (!response.ok) throw new Error('Failed to fetch device types');
       this.deviceTypes = await response.json();
     } catch (error) {
-      console.error("Error loading device types:", error);
-      this.showToast("Failed to load device types", "error");
+      console.error('Error loading device types:', error);
+      this.showToast('Failed to load device types', 'error');
     }
   }
 
   async loadSubnets() {
     try {
-      const response = await fetch("api/subnets.php");
-      if (!response.ok) throw new Error("Failed to fetch subnets");
+      const response = await fetch('api/subnets.php');
+      if (!response.ok) throw new Error('Failed to fetch subnets');
       this.subnets = await response.json();
     } catch (error) {
-      console.error("Error loading subnets:", error);
-      this.showToast("Failed to load subnets", "error");
+      console.error('Error loading subnets:', error);
+      this.showToast('Failed to load subnets', 'error');
     }
   }
 
-  async fetchBranches() {
-    const response = await fetch("api/branches.php");
-    if (!response.ok) throw new Error("Failed to fetch branches");
-    return await response.json();
-  }
-
-  renderBranches(branches) {
-    const container = document.getElementById("branch-buttons");
-    container.innerHTML = "";
-
-    branches.forEach((branch) => {
-      const branchCard = document.createElement("div");
-      branchCard.className = "branch-card";
-      branchCard.innerHTML = `
-        <button class="btn btn-branch" data-branch-id="${branch.id}" data-branch-name="${branch.name}">
-          <i class="fas fa-building branch-icon"></i>
-          ${branch.name}
-          <span class="ip-count">${branch.ip_count} IPs</span>
-        </button>
-      `;
-
-      branchCard.addEventListener("click", () =>
-        this.selectBranch(branch.id, branch.name, branchCard)
-      );
-      container.appendChild(branchCard);
-    });
-  }
-
-  selectBranch(branchId, branchName, cardElement) {
-    document
-      .querySelectorAll(".branch-card")
-      .forEach((card) => card.classList.remove("active"));
-    cardElement.classList.add("active");
-
-    this.currentBranch = branchId;
-
-    document.getElementById("selected-branch-name").textContent = branchName;
-    document.getElementById("ip-content").style.display = "block";
-    document.getElementById("no-branch-selected").style.display = "none";
-
-    this.initializeDataTable();
-  }
-
   initializeDataTable() {
-    // Destroy existing DataTable if it exists
     if (this.dataTable) {
       this.dataTable.destroy();
     }
 
-    // Initialize DataTable with AJAX
     this.dataTable = $('#ip-table').DataTable({
       processing: true,
       serverSide: true,
@@ -164,6 +222,8 @@ setTheme(theme) {
         type: 'POST',
         data: (d) => {
           d.branch_id = this.currentBranch;
+          d.network = this.currentNetwork;
+          d.subnet_id = this.currentSubnetId;
           return d;
         },
         error: (xhr, error, thrown) => {
@@ -205,11 +265,11 @@ setTheme(theme) {
           }
         }
       ],
-      order: [[0, 'asc']], // Sort by IP address by default
+      order: [[0, 'asc']],
       pageLength: 10,
       lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
       language: {
-        emptyTable: "No IP addresses found for this branch",
+        emptyTable: "No IP addresses found for this network",
         zeroRecords: "No matching IP addresses found",
         processing: '<div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div>'
       },
@@ -220,42 +280,47 @@ setTheme(theme) {
   }
 
   showAddModal() {
-    if (!this.currentBranch) {
-      this.showToast("Please select a branch first", "error");
+    if (!this.currentBranch || !this.currentNetwork) {
+      this.showToast('Please select a branch and network first', 'error');
       return;
     }
 
-    document.getElementById("modal-title").textContent = "Add New IP Address";
-    document.getElementById("ip-form").reset();
-    document.getElementById("ip-id").value = "";
+    document.getElementById('modal-title').textContent = 'Add New IP Address';
+    document.getElementById('ip-form').reset();
+    document.getElementById('ip-id').value = '';
+
+    // Pre-fill IP address with network
+    const networkPrefix = this.currentNetwork.substring(0, this.currentNetwork.lastIndexOf('.'));
+    document.getElementById('ip-address').value = networkPrefix + '.';
+    document.getElementById('ip-address').focus();
 
     this.populateDeviceTypeSelect();
-    this.populateSubnetSelect();
+    this.populateSubnetSelect(this.currentSubnetId);
 
-    const modal = new bootstrap.Modal(document.getElementById("ip-modal"));
+    const modal = new bootstrap.Modal(document.getElementById('ip-modal'));
     modal.show();
   }
 
   showEditModal(ip) {
-    document.getElementById("modal-title").textContent = "Edit IP Address";
-    document.getElementById("ip-id").value = ip.id;
-    document.getElementById("ip-address").value = ip.ip_address;
-    document.getElementById("device-name").value = ip.device_name;
-    document.getElementById("description").value = ip.description || "";
+    document.getElementById('modal-title').textContent = 'Edit IP Address';
+    document.getElementById('ip-id').value = ip.id;
+    document.getElementById('ip-address').value = ip.ip_address;
+    document.getElementById('device-name').value = ip.device_name;
+    document.getElementById('description').value = ip.description || '';
 
     this.populateDeviceTypeSelect(ip.device_type_id);
     this.populateSubnetSelect(ip.subnet_id);
 
-    const modal = new bootstrap.Modal(document.getElementById("ip-modal"));
+    const modal = new bootstrap.Modal(document.getElementById('ip-modal'));
     modal.show();
   }
 
   populateDeviceTypeSelect(selectedId = null) {
-    const select = document.getElementById("device-type");
+    const select = document.getElementById('device-type');
     select.innerHTML = '<option value="">Select Device Type</option>';
 
-    this.deviceTypes.forEach((type) => {
-      const option = document.createElement("option");
+    this.deviceTypes.forEach(type => {
+      const option = document.createElement('option');
       option.value = type.id;
       option.textContent = type.name;
       if (selectedId && type.id == selectedId) {
@@ -266,11 +331,11 @@ setTheme(theme) {
   }
 
   populateSubnetSelect(selectedId = null) {
-    const select = document.getElementById("subnet");
+    const select = document.getElementById('subnet');
     select.innerHTML = '<option value="">Select Subnet</option>';
 
-    this.subnets.forEach((subnet) => {
-      const option = document.createElement("option");
+    this.subnets.forEach(subnet => {
+      const option = document.createElement('option');
       option.value = subnet.id;
       option.textContent = `/${subnet.prefix} (${subnet.subnet_mask})`;
       if (selectedId && subnet.id == selectedId) {
@@ -281,38 +346,34 @@ setTheme(theme) {
   }
 
   async handleFormSubmit() {
-    const form = document.getElementById("ip-form");
+    const form = document.getElementById('ip-form');
     const formData = new FormData(form);
 
     const ipData = {
-      ip_address: formData.get("ip_address"),
-      device_name: formData.get("device_name"),
-      device_type_id: formData.get("device_type_id"),
-      subnet_id: formData.get("subnet_id"),
-      description: formData.get("description"),
+      ip_address: formData.get('ip_address'),
+      device_name: formData.get('device_name'),
+      device_type_id: formData.get('device_type_id'),
+      subnet_id: formData.get('subnet_id'),
+      description: formData.get('description'),
       branch_id: this.currentBranch,
     };
 
-    const ipId = document.getElementById("ip-id").value;
-    const isEdit = ipId !== "";
+    const ipId = document.getElementById('ip-id').value;
+    const isEdit = ipId !== '';
 
     try {
       let response;
       if (isEdit) {
         ipData.id = ipId;
-        response = await fetch("api/ips.php", {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
+        response = await fetch('api/ips.php', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(ipData),
         });
       } else {
-        response = await fetch("api/ips.php", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+        response = await fetch('api/ips.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(ipData),
         });
       }
@@ -320,89 +381,90 @@ setTheme(theme) {
       const result = await response.json();
 
       if (response.ok) {
-        this.showToast(result.message, "success");
-        const modal = bootstrap.Modal.getInstance(
-          document.getElementById("ip-modal")
-        );
+        this.showToast(result.message, 'success');
+        const modal = bootstrap.Modal.getInstance(document.getElementById('ip-modal'));
         modal.hide();
         
-        // Reload DataTable
         if (this.dataTable) {
           this.dataTable.ajax.reload();
         }
         
-        // Refresh branch IP counts
+        // Refresh dropdowns
         this.loadBranches();
+        if (this.currentBranch) {
+          this.loadNetworks(this.currentBranch);
+        }
       } else {
-        this.showToast(result.error || "Operation failed", "error");
+        this.showToast(result.error || 'Operation failed', 'error');
       }
     } catch (error) {
-      console.error("Error saving IP:", error);
-      this.showToast("Failed to save IP address", "error");
+      console.error('Error saving IP:', error);
+      this.showToast('Failed to save IP address', 'error');
     }
   }
 
   async deleteIP(ipId) {
-    if (!confirm("Are you sure you want to delete this IP address?")) {
+    if (!confirm('Are you sure you want to delete this IP address?')) {
       return;
     }
 
     try {
       const response = await fetch(`api/ips.php?id=${ipId}`, {
-        method: "DELETE",
+        method: 'DELETE',
       });
 
       const result = await response.json();
 
       if (response.ok) {
-        this.showToast(result.message, "success");
+        this.showToast(result.message, 'success');
         
-        // Reload DataTable
         if (this.dataTable) {
           this.dataTable.ajax.reload();
         }
         
-        // Refresh branch IP counts
+        // Refresh dropdowns
         this.loadBranches();
+        if (this.currentBranch) {
+          this.loadNetworks(this.currentBranch);
+        }
       } else {
-        this.showToast(result.error || "Delete failed", "error");
+        this.showToast(result.error || 'Delete failed', 'error');
       }
     } catch (error) {
-      console.error("Error deleting IP:", error);
-      this.showToast("Failed to delete IP address", "error");
+      console.error('Error deleting IP:', error);
+      this.showToast('Failed to delete IP address', 'error');
     }
   }
 
-  showToast(message, type = "success") {
+  showToast(message, type = 'success') {
     const toastHtml = `
       <div class="toast ${type}" role="alert" aria-live="assertive" aria-atomic="true">
         <div class="toast-body">
-          <i class="fas ${type === "success" ? "fa-check-circle" : "fa-exclamation-circle"} me-2"></i>
+          <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} me-2"></i>
           ${message}
         </div>
       </div>
     `;
 
-    let container = document.querySelector(".toast-container");
+    let container = document.querySelector('.toast-container');
     if (!container) {
-      container = document.createElement("div");
-      container.className = "toast-container position-fixed top-0 end-0 p-3";
+      container = document.createElement('div');
+      container.className = 'toast-container position-fixed top-0 end-0 p-3';
       document.body.appendChild(container);
     }
 
     container.innerHTML = toastHtml;
-    const toastElement = container.querySelector(".toast");
+    const toastElement = container.querySelector('.toast');
     const toast = new bootstrap.Toast(toastElement);
     toast.show();
 
-    toastElement.addEventListener("hidden.bs.toast", () => {
+    toastElement.addEventListener('hidden.bs.toast', () => {
       toastElement.remove();
     });
   }
 }
 
-// Initialize the application when DOM is loaded
 let ipManager;
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener('DOMContentLoaded', () => {
   ipManager = new IPManagement();
 });

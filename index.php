@@ -26,22 +26,35 @@
 
     <div class="container main-container">
         <div class="row">
-            <div class="col-lg-4 col-md-12">
-                <h4 class="mb-4">
-                    <i class="fas fa-building me-2"></i>
-                    Select Branch
-                </h4>
-                <div id="branch-buttons">
-                    <!-- Branch buttons will be loaded here -->
+            <div class="col-lg-12">
+                <div class="selection-bar mb-4">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="branch-select" class="form-label">
+                                <i class="fas fa-building me-2"></i>
+                                Select Branch
+                            </label>
+                            <select class="form-select form-select-lg" id="branch-select">
+                                <option value="">Choose a branch...</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="network-select" class="form-label">
+                                <i class="fas fa-network-wired me-2"></i>
+                                Select Network
+                            </label>
+                            <select class="form-select form-select-lg" id="network-select" disabled>
+                                <option value="">Choose a network...</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
-            </div>
 
-            <div class="col-lg-8 col-md-12">
                 <div id="ip-content" style="display: none;">
                     <div class="actions-bar">
                         <h5>
                             <i class="fas fa-server me-2"></i>
-                            IP Addresses - <span id="selected-branch-name"></span>
+                            IP Addresses - <span id="selected-branch-name"></span> / <span id="selected-network"></span>
                         </h5>
                         <button class="btn btn-success" id="add-ip-btn">
                             <i class="fas fa-plus me-2"></i>
@@ -70,10 +83,10 @@
                     </div>
                 </div>
 
-                <div id="no-branch-selected" class="no-data">
+                <div id="no-selection" class="no-data">
                     <i class="fas fa-mouse-pointer fa-3x mb-3"></i>
-                    <h5>Select a branch to view IP addresses</h5>
-                    <p>Choose a branch from the left panel to display its IP configuration.</p>
+                    <h5>Select a branch and network to view IP addresses</h5>
+                    <p>Choose a branch from the dropdown above, then select a network to display its IP configuration.</p>
                 </div>
             </div>
         </div>

@@ -19,6 +19,8 @@ try {
     $orderColumn = isset($_POST['order'][0]['column']) ? intval($_POST['order'][0]['column']) : 0;
     $orderDir = isset($_POST['order'][0]['dir']) ? $_POST['order'][0]['dir'] : 'asc';
     $branchId = isset($_POST['branch_id']) ? intval($_POST['branch_id']) : 0;
+    $network = isset($_POST['network']) ? $_POST['network'] : '';
+    $subnetId = isset($_POST['subnet_id']) ? intval($_POST['subnet_id']) : 0;
 
     if (!$branchId) {
         echo json_encode([
@@ -47,6 +49,19 @@ try {
                   WHERE i.branch_id = :branch_id";
 
     $params = ['branch_id' => $branchId];
+
+    // Add network filter if provided
+    if (!empty($network)) {
+        $networkPrefix = substr($network, 0, strrpos($network, '.'));
+        $baseQuery .= " AND i.ip_address LIKE :network";
+        $params['network'] = $networkPrefix . '.%';
+    }
+
+    // Add subnet filter if provided
+    if (!empty($subnetId)) {
+        $baseQuery .= " AND i.subnet_id = :subnet_id";
+        $params['subnet_id'] = $subnetId;
+    }
 
     // Add search condition
     if (!empty($search)) {
