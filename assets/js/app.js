@@ -146,16 +146,13 @@ class IPManagement {
     // Reset network selection
     const networkSelect = document.getElementById('network-select');
     if (networkSelect) {
-      networkSelect.innerHTML = '<option value="">Choose a network...</option>';
-      networkSelect.disabled = true;
+      networkSelect.innerHTML = '<option value="">All Networks</option>';
+      networkSelect.disabled = false;
     }
     
-    // Hide IP content
+    // Show/Hide IP content
     const ipContent = document.getElementById('ip-content');
     const noSelection = document.getElementById('no-selection');
-    
-    if (ipContent) ipContent.style.display = 'none';
-    if (noSelection) noSelection.style.display = 'block';
     
     // Destroy existing DataTable if present
     if (this.dataTable) {
@@ -166,15 +163,31 @@ class IPManagement {
     if (!branchId) {
       this.currentBranch = null;
       this.currentBranchName = null;
+      if (ipContent) ipContent.style.display = 'none';
+      if (noSelection) noSelection.style.display = 'block';
       return;
     }
     
     this.currentBranch = parseInt(branchId);
     const selectedOption = document.querySelector(`#branch-select option[value="${branchId}"]`);
     this.currentBranchName = selectedOption ? selectedOption.dataset.name : '';
+    this.currentNetwork = null;
+    this.currentSubnetId = null;
+    
+    // Update display
+    const branchName = document.getElementById('selected-branch-name');
+    const networkName = document.getElementById('selected-network');
+    
+    if (branchName) branchName.textContent = this.currentBranchName;
+    if (networkName) networkName.textContent = 'All Networks';
+    if (ipContent) ipContent.style.display = 'block';
+    if (noSelection) noSelection.style.display = 'none';
     
     // Load networks for selected branch
     await this.loadNetworks(branchId);
+    
+    // Initialize table with all IPs from branch
+    this.initializeDataTable();
   }
 
   async loadNetworks(branchId) {
@@ -200,14 +213,11 @@ class IPManagement {
     const select = document.getElementById('network-select');
     if (!select) return;
     
-    select.innerHTML = '<option value="">Choose a network...</option>';
+    select.innerHTML = '<option value="">All Networks</option>';
     
     if (!Array.isArray(networks) || networks.length === 0) {
-      const option = document.createElement('option');
-      option.textContent = 'No networks available';
-      option.disabled = true;
-      select.appendChild(option);
-      select.disabled = true;
+      // Don't disable the select - user can still add IPs
+      select.disabled = false;
       return;
     }
     
@@ -225,9 +235,6 @@ class IPManagement {
   }
 
   onNetworkChange(value) {
-    const ipContent = document.getElementById('ip-content');
-    const noSelection = document.getElementById('no-selection');
-    
     // Destroy existing DataTable if present
     if (this.dataTable) {
       this.dataTable.destroy();
@@ -235,10 +242,14 @@ class IPManagement {
     }
     
     if (!value) {
+      // Show all networks
       this.currentNetwork = null;
       this.currentSubnetId = null;
-      if (ipContent) ipContent.style.display = 'none';
-      if (noSelection) noSelection.style.display = 'block';
+      
+      const networkName = document.getElementById('selected-network');
+      if (networkName) networkName.textContent = 'All Networks';
+      
+      this.initializeDataTable();
       return;
     }
     
@@ -247,14 +258,8 @@ class IPManagement {
       this.currentNetwork = data.network;
       this.currentSubnetId = data.subnet_id;
       
-      // Update display
-      const branchName = document.getElementById('selected-branch-name');
       const networkName = document.getElementById('selected-network');
-      
-      if (branchName) branchName.textContent = this.currentBranchName;
       if (networkName) networkName.textContent = this.currentNetwork;
-      if (ipContent) ipContent.style.display = 'block';
-      if (noSelection) noSelection.style.display = 'none';
       
       // Load IPs for selected network
       this.initializeDataTable();
@@ -333,8 +338,8 @@ class IPManagement {
           type: 'POST',
           data: (d) => {
             d.branch_id = this.currentBranch;
-            d.network = this.currentNetwork;
-            d.subnet_id = this.currentSubnetId;
+            d.network = this.currentNetwork || '';
+            d.subnet_id = this.currentSubnetId || '';
             return d;
           },
           error: (xhr, error, thrown) => {
@@ -385,7 +390,7 @@ class IPManagement {
         pageLength: 10,
         lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
         language: {
-          emptyTable: "No IP addresses found for this network",
+          emptyTable: "No IP addresses found. Click 'Add New IP' to add the first IP address.",
           zeroRecords: "No matching IP addresses found",
           processing: '<div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div>',
           loadingRecords: 'Loading...',
@@ -433,8 +438,8 @@ class IPManagement {
   }
 
   showAddModal() {
-    if (!this.currentBranch || !this.currentNetwork) {
-      this.showToast('Please select a branch and network first', 'error');
+    if (!this.currentBranch) {
+      this.showToast('Please select a branch first', 'error');
       return;
     }
 
@@ -447,7 +452,7 @@ class IPManagement {
     if (ipForm) ipForm.reset();
     if (ipId) ipId.value = '';
 
-    // Pre-fill IP address with network
+    // Pre-fill IP address with network if available
     if (ipAddress && this.currentNetwork) {
       const networkPrefix = this.currentNetwork.substring(0, this.currentNetwork.lastIndexOf('.'));
       ipAddress.value = networkPrefix + '.';
@@ -456,6 +461,11 @@ class IPManagement {
       setTimeout(() => {
         ipAddress.focus();
         ipAddress.setSelectionRange(ipAddress.value.length, ipAddress.value.length);
+      }, 300);
+    } else if (ipAddress) {
+      // Focus on empty IP field
+      setTimeout(() => {
+        ipAddress.focus();
       }, 300);
     }
 
@@ -644,7 +654,7 @@ class IPManagement {
         
         // Reload table
         if (this.dataTable) {
-          this.dataTable.ajax.reload(null, false); // false keeps current page
+          this.dataTable.ajax.reload(null, false);
         }
         
         // Refresh dropdowns
