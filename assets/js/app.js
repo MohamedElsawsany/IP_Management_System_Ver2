@@ -7,6 +7,7 @@ class IPManagement {
     this.deviceTypes = [];
     this.subnets = [];
     this.dataTable = null;
+    this.THEME_KEY = 'ip-management-theme';
     this.init();
   }
 
@@ -25,7 +26,7 @@ class IPManagement {
 
   getTheme() {
     try {
-      const savedTheme = localStorage.getItem('ipms-theme');
+      const savedTheme = localStorage.getItem(this.THEME_KEY);
       if (savedTheme) {
         return savedTheme;
       }
@@ -39,7 +40,7 @@ class IPManagement {
 
   setTheme(theme) {
     try {
-      localStorage.setItem('ipms-theme', theme);
+      localStorage.setItem(this.THEME_KEY, theme);
     } catch (e) {
       console.warn('localStorage not available:', e);
     }
@@ -317,112 +318,120 @@ class IPManagement {
       return;
     }
 
-    // Destroy existing instance
-    if (this.dataTable) {
-      this.dataTable.destroy();
-      this.dataTable = null;
-    }
-
-    const table = $('#ip-table');
-    if (table.length === 0) {
+    // Ensure table element exists
+    const tableElement = document.getElementById('ip-table');
+    if (!tableElement) {
       console.error('Table element not found');
       return;
     }
 
-    try {
-      this.dataTable = table.DataTable({
-        processing: true,
-        serverSide: true,
-        ajax: {
-          url: 'api/ips_datatable.php',
-          type: 'POST',
-          data: (d) => {
-            d.branch_id = this.currentBranch;
-            d.network = this.currentNetwork || '';
-            d.subnet_id = this.currentSubnetId || '';
-            return d;
-          },
-          error: (xhr, error, thrown) => {
-            console.error('DataTables error:', error, thrown);
-            this.showToast('Failed to load IP addresses', 'error');
-          }
-        },
-        columns: [
-          { 
-            data: 'ip_address',
-            render: (data) => `<strong>${this.escapeHtml(data)}</strong>`
-          },
-          { 
-            data: 'device_name',
-            render: (data) => this.escapeHtml(data)
-          },
-          { 
-            data: 'device_type',
-            render: (data) => `<span class="badge bg-primary">${this.escapeHtml(data)}</span>`
-          },
-          { 
-            data: 'subnet_mask',
-            render: (data) => this.escapeHtml(data)
-          },
-          { 
-            data: 'description',
-            render: (data) => data ? this.escapeHtml(data) : '<em class="text-muted">No description</em>'
-          },
-          {
-            data: null,
-            orderable: false,
-            searchable: false,
-            render: (data, type, row) => {
-              return `
-                <div class="action-buttons">
-                  <button class="btn btn-warning btn-sm" onclick="ipManager.showEditModal(${row.id})" title="Edit">
-                    <i class="fas fa-edit"></i>
-                  </button>
-                  <button class="btn btn-danger btn-sm" onclick="ipManager.confirmDelete(${row.id})" title="Delete">
-                    <i class="fas fa-trash"></i>
-                  </button>
-                </div>
-              `;
-            }
-          }
-        ],
-        order: [[0, 'asc']],
-        pageLength: 10,
-        lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
-        language: {
-          emptyTable: "No IP addresses found. Click 'Add New IP' to add the first IP address.",
-          zeroRecords: "No matching IP addresses found",
-          processing: '<div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div>',
-          loadingRecords: 'Loading...',
-          search: 'Search:',
-          lengthMenu: 'Show _MENU_ entries',
-          info: 'Showing _START_ to _END_ of _TOTAL_ entries',
-          infoEmpty: 'Showing 0 to 0 of 0 entries',
-          infoFiltered: '(filtered from _MAX_ total entries)',
-          paginate: {
-            first: 'First',
-            last: 'Last',
-            next: 'Next',
-            previous: 'Previous'
-          }
-        },
-        dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rt<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
-        responsive: true,
-        autoWidth: false,
-        drawCallback: function() {
-          // Ensure tooltips work after table redraw
-          const tooltips = document.querySelectorAll('[title]');
-          tooltips.forEach(el => {
-            if (el.title && !el.dataset.bsToggle) {
-              el.dataset.bsToggle = 'tooltip';
-            }
-          });
-        }
-      });
-    } catch (error) {
-      console.error('Error initializing DataTable:', error);
-      this.showToast('Failed to initialize table', 'error');
+    // Destroy existing instance
+    if (this.dataTable) {
+      try {
+        this.dataTable.destroy();
+        this.dataTable = null;
+      } catch (e) {
+        console.warn('Error destroying DataTable:', e);
+      }
     }
+
+    // Wait a moment for DOM to be ready
+    setTimeout(() => {
+      try {
+        this.dataTable = $('#ip-table').DataTable({
+          processing: true,
+          serverSide: true,
+          ajax: {
+            url: 'api/ips_datatable.php',
+            type: 'POST',
+            data: (d) => {
+              d.branch_id = this.currentBranch;
+              d.network = this.currentNetwork || '';
+              d.subnet_id = this.currentSubnetId || '';
+              return d;
+            },
+            error: (xhr, error, thrown) => {
+              console.error('DataTables error:', error, thrown);
+              this.showToast('Failed to load IP addresses', 'error');
+            }
+          },
+          columns: [
+            { 
+              data: 'ip_address',
+              render: (data) => `<strong>${this.escapeHtml(data)}</strong>`
+            },
+            { 
+              data: 'device_name',
+              render: (data) => this.escapeHtml(data)
+            },
+            { 
+              data: 'device_type',
+              render: (data) => `<span class="badge bg-primary">${this.escapeHtml(data)}</span>`
+            },
+            { 
+              data: 'subnet_mask',
+              render: (data) => this.escapeHtml(data)
+            },
+            { 
+              data: 'description',
+              render: (data) => data ? this.escapeHtml(data) : '<em class="text-muted">No description</em>'
+            },
+            {
+              data: null,
+              orderable: false,
+              searchable: false,
+              render: (data, type, row) => {
+                return `
+                  <div class="action-buttons">
+                    <button class="btn btn-warning btn-sm" onclick="ipManager.showEditModal(${row.id})" title="Edit">
+                      <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-danger btn-sm" onclick="ipManager.confirmDelete(${row.id})" title="Delete">
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </div>
+                `;
+              }
+            }
+          ],
+          order: [[0, 'asc']],
+          pageLength: 10,
+          lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
+          language: {
+            emptyTable: "No IP addresses found. Click 'Add New IP' to add the first IP address.",
+            zeroRecords: "No matching IP addresses found",
+            processing: '<div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div>',
+            loadingRecords: 'Loading...',
+            search: 'Search:',
+            lengthMenu: 'Show _MENU_ entries',
+            info: 'Showing _START_ to _END_ of _TOTAL_ entries',
+            infoEmpty: 'Showing 0 to 0 of 0 entries',
+            infoFiltered: '(filtered from _MAX_ total entries)',
+            paginate: {
+              first: 'First',
+              last: 'Last',
+              next: 'Next',
+              previous: 'Previous'
+            }
+          },
+          dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rt<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
+          responsive: true,
+          autoWidth: false,
+          drawCallback: function() {
+            // Ensure tooltips work after table redraw
+            const tooltips = document.querySelectorAll('[title]');
+            tooltips.forEach(el => {
+              if (el.title && !el.dataset.bsToggle) {
+                el.dataset.bsToggle = 'tooltip';
+              }
+            });
+          }
+        });
+      } catch (error) {
+        console.error('Error initializing DataTable:', error);
+        this.showToast('Failed to initialize table', 'error');
+      }
+    }, 100);
   }
 
   escapeHtml(text) {
@@ -435,6 +444,18 @@ class IPManagement {
       "'": '&#039;'
     };
     return String(text).replace(/[&<>"']/g, m => map[m]);
+  }
+
+  validateIP(ip) {
+    if (!ip) return false;
+    
+    const parts = ip.split('.');
+    if (parts.length !== 4) return false;
+    
+    return parts.every(part => {
+      const num = parseInt(part, 10);
+      return num >= 0 && num <= 255 && part === num.toString();
+    });
   }
 
   showAddModal() {
@@ -456,17 +477,6 @@ class IPManagement {
     if (ipAddress && this.currentNetwork) {
       const networkPrefix = this.currentNetwork.substring(0, this.currentNetwork.lastIndexOf('.'));
       ipAddress.value = networkPrefix + '.';
-      
-      // Focus after a short delay to ensure modal is fully visible
-      setTimeout(() => {
-        ipAddress.focus();
-        ipAddress.setSelectionRange(ipAddress.value.length, ipAddress.value.length);
-      }, 300);
-    } else if (ipAddress) {
-      // Focus on empty IP field
-      setTimeout(() => {
-        ipAddress.focus();
-      }, 300);
     }
 
     this.populateDeviceTypeSelect();
@@ -475,6 +485,20 @@ class IPManagement {
     const modalElement = document.getElementById('ip-modal');
     if (modalElement) {
       const modal = new bootstrap.Modal(modalElement);
+      
+      // Focus on IP input after modal is shown
+      modalElement.addEventListener('shown.bs.modal', function focusHandler() {
+        const ipInput = document.getElementById('ip-address');
+        if (ipInput) {
+          ipInput.focus();
+          if (ipInput.value) {
+            ipInput.setSelectionRange(ipInput.value.length, ipInput.value.length);
+          }
+        }
+        // Remove event listener after first use
+        modalElement.removeEventListener('shown.bs.modal', focusHandler);
+      });
+      
       modal.show();
     }
   }
@@ -597,11 +621,11 @@ class IPManagement {
     const formData = new FormData(form);
 
     const ipData = {
-      ip_address: formData.get('ip_address'),
-      device_name: formData.get('device_name'),
+      ip_address: formData.get('ip_address')?.trim(),
+      device_name: formData.get('device_name')?.trim(),
       device_type_id: formData.get('device_type_id'),
       subnet_id: formData.get('subnet_id'),
-      description: formData.get('description') || '',
+      description: formData.get('description')?.trim() || '',
       branch_id: this.currentBranch,
     };
 
@@ -612,8 +636,7 @@ class IPManagement {
     }
 
     // Validate IP address format
-    const ipRegex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
-    if (!ipRegex.test(ipData.ip_address)) {
+    if (!this.validateIP(ipData.ip_address)) {
       this.showToast('Please enter a valid IP address', 'error');
       return;
     }

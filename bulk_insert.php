@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -117,7 +118,8 @@
             margin-bottom: 0.5rem;
         }
 
-        .form-control, .form-select {
+        .form-control,
+        .form-select {
             background: var(--dark-bg);
             border: 2px solid var(--border-color);
             color: var(--text-primary);
@@ -131,7 +133,8 @@
             background: #ffffff;
         }
 
-        .form-control:focus, .form-select:focus {
+        .form-control:focus,
+        .form-select:focus {
             background: var(--dark-bg);
             border-color: var(--secondary-blue);
             color: var(--text-primary);
@@ -275,6 +278,7 @@
         }
     </style>
 </head>
+
 <body>
     <!-- Theme Toggle Button -->
     <button class="theme-toggle" id="theme-toggle" title="Toggle theme">
@@ -338,15 +342,15 @@
                                     <div class="row">
                                         <div class="col-md-6 mb-3">
                                             <label for="start-ip" class="form-label">Start IP Address *</label>
-                                            <input type="text" class="form-control" id="start-ip" 
-                                                   placeholder="172.16.0.0" required>
+                                            <input type="text" class="form-control" id="start-ip"
+                                                placeholder="172.16.0.0" required>
                                             <div class="form-text">Full IPv4 address (e.g., 172.16.0.0)</div>
                                         </div>
-                                        
+
                                         <div class="col-md-6 mb-3">
                                             <label for="end-ip" class="form-label">End IP Address *</label>
-                                            <input type="text" class="form-control" id="end-ip" 
-                                                   placeholder="172.31.255.255" required>
+                                            <input type="text" class="form-control" id="end-ip"
+                                                placeholder="172.31.255.255" required>
                                             <div class="form-text">Full IPv4 address (e.g., 172.31.255.255)</div>
                                         </div>
                                     </div>
@@ -409,7 +413,7 @@
                                                 <option value="">Select subnet...</option>
                                             </select>
                                         </div>
-                                        
+
                                         <div class="col-md-6 mb-3">
                                             <label for="device-type-select" class="form-label">Device Type *</label>
                                             <select class="form-select" id="device-type-select" required>
@@ -420,15 +424,15 @@
 
                                     <div class="mb-3">
                                         <label for="device-prefix" class="form-label">Device Name Prefix *</label>
-                                        <input type="text" class="form-control" id="device-prefix" 
-                                               value="Device" required>
+                                        <input type="text" class="form-control" id="device-prefix"
+                                            value="Device" required>
                                         <div class="form-text">Devices will be named: Prefix-172-16-0-1, Prefix-172-16-0-2, etc.</div>
                                     </div>
-                                    
+
                                     <div class="mb-3">
                                         <label for="description" class="form-label">Description</label>
                                         <textarea class="form-control" id="description" rows="2"
-                                                  placeholder="Optional description">Bulk inserted IP range</textarea>
+                                            placeholder="Optional description">Bulk inserted IP range</textarea>
                                     </div>
 
                                     <div class="form-check">
@@ -446,8 +450,8 @@
                                     <div class="card-body">
                                         <h5><i class="fas fa-spinner fa-spin me-2"></i>Processing...</h5>
                                         <div class="progress">
-                                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" 
-                                                 role="progressbar" style="width: 100%">
+                                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-success"
+                                                role="progressbar" style="width: 100%">
                                                 Inserting IP addresses...
                                             </div>
                                         </div>
@@ -511,25 +515,25 @@
 
             getTheme() {
                 try {
-                    const savedTheme = localStorage.getItem('ipms-theme');
+                    const savedTheme = localStorage.getItem('ip-theme');
                     if (savedTheme) {
                         return savedTheme;
                     }
                 } catch (e) {
                     console.warn('localStorage not available:', e);
                 }
-                
+
                 const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
                 return prefersDark ? 'dark' : 'light';
             }
 
             setTheme(theme) {
                 try {
-                    localStorage.setItem('ipms-theme', theme);
+                    localStorage.setItem('ip-theme', theme);
                 } catch (e) {
                     console.warn('localStorage not available:', e);
                 }
-                
+
                 document.documentElement.setAttribute('data-theme', theme);
                 const icon = document.querySelector('.theme-toggle i');
                 if (icon) {
@@ -546,7 +550,7 @@
             setupEventListeners() {
                 // Theme toggle
                 $('#theme-toggle').on('click', () => this.toggleTheme());
-                
+
                 $('#calculate-btn').on('click', () => this.calculateRange());
                 $('#start-ip, #end-ip').on('blur', () => this.calculateRange());
                 $('#bulk-form').on('submit', (e) => {
@@ -554,12 +558,19 @@
                     this.handleSubmit();
                 });
             }
-
+            ip2long(ip) {
+                const parts = ip.split('.');
+                if (parts.length !== 4) return false;
+                return (parseInt(parts[0]) * 16777216) +
+                    (parseInt(parts[1]) * 65536) +
+                    (parseInt(parts[2]) * 256) +
+                    parseInt(parts[3]);
+            }
             async loadBranches() {
                 try {
                     const response = await fetch('api/branches.php');
                     const branches = await response.json();
-                    
+
                     const select = $('#branch-select');
                     branches.forEach(branch => {
                         select.append(`<option value="${branch.id}">${branch.name}</option>`);
@@ -573,7 +584,7 @@
                 try {
                     const response = await fetch('api/device_types.php');
                     const types = await response.json();
-                    
+
                     const select = $('#device-type-select');
                     types.forEach(type => {
                         select.append(`<option value="${type.id}">${type.name}</option>`);
@@ -587,7 +598,7 @@
                 try {
                     const response = await fetch('api/subnets.php');
                     const subnets = await response.json();
-                    
+
                     const select = $('#subnet-select');
                     subnets.forEach(subnet => {
                         select.append(`<option value="${subnet.id}">/${subnet.prefix} (${subnet.subnet_mask})</option>`);
@@ -599,10 +610,10 @@
 
             ip2long(ip) {
                 const parts = ip.split('.');
-                return (parseInt(parts[0]) << 24) + 
-                       (parseInt(parts[1]) << 16) + 
-                       (parseInt(parts[2]) << 8) + 
-                       parseInt(parts[3]);
+                return (parseInt(parts[0]) << 24) +
+                    (parseInt(parts[1]) << 16) +
+                    (parseInt(parts[2]) << 8) +
+                    parseInt(parts[3]);
             }
 
             calculateRange() {
@@ -677,7 +688,9 @@
                 try {
                     const response = await fetch('api/bulk_ips_enhanced.php', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
                         body: JSON.stringify(data)
                     });
 
@@ -756,7 +769,9 @@
 
                 $('#result-content').html(html);
                 $('#result-container').show();
-                $('#result-container')[0].scrollIntoView({ behavior: 'smooth' });
+                $('#result-container')[0].scrollIntoView({
+                    behavior: 'smooth'
+                });
             }
         }
 
@@ -765,4 +780,5 @@
         });
     </script>
 </body>
+
 </html>
