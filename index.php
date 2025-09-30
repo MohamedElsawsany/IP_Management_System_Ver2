@@ -21,6 +21,12 @@
                 <i class="fas fa-network-wired me-2"></i>
                 IP Management System
             </a>
+            <div class="ms-auto">
+                <a href="bulk_insert.php" class="btn btn-outline-light">
+                    <i class="fas fa-layer-group me-2"></i>
+                    Bulk Insert
+                </a>
+            </div>
         </div>
     </nav>
 
@@ -87,6 +93,12 @@
                     <i class="fas fa-mouse-pointer fa-3x mb-3"></i>
                     <h5>Select a branch and network to view IP addresses</h5>
                     <p>Choose a branch from the dropdown above, then select a network to display its IP configuration.</p>
+                    <div class="mt-4">
+                        <a href="bulk_insert.php" class="btn btn-primary btn-lg">
+                            <i class="fas fa-layer-group me-2"></i>
+                            Bulk Insert IPs
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
